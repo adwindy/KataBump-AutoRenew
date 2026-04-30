@@ -214,15 +214,53 @@ async def renew_user(page, user):
         except Exception:
             pass
 
-        # 进入服务器
+        # 进入服务器页
+        server_id = user.get("server_id", "")
         log("寻找服务器...")
         try:
-            see = page.get_by_role("link", name="See").first
-            await see.wait_for(state="visible", timeout=15000)
-            await page.wait_for_timeout(1000)
-            await see.click()
-        except Exception:
-            log("未找到服务器"); return False
+            # 方式1: 如果有 server_id，直接导航
+            if server_id:
+                log(f"  导航到服务器 {server_id}...")
+                await page.goto(f"{DASHBOARD_URL}/server/{server_id}")
+                await page.wait_for_timeout(3000)
+            else:
+                # 方式2: 在 dashboard 页面找链接
+                # 尝试多种可能的链接文字
+                found = False
+                for link_text in ["See", "View", "Manage", "Open", "Details"]:
+                    try:
+                        link = page.get_by_role("link", name=link_text).first
+                        await link.wait_for(state="visible", timeout=3000)
+                        await page.wait_for_timeout(1000)
+                        await link.click()
+                        found = True
+                        log(f"  找到 '{link_text}' 链接")
+                        break
+                    except Exception:
+                        continue
+                if not found:
+                    # 方式3: 尝试点击任何服务器卡片/行
+                    try:
+                        # KataBump 可能用卡片或表格行显示服务器
+                        card = page.locator(".server-card, .card, tr.server-row, [data-server-id]").first
+                        await card.wait_for(state="visible", timeout=5000)
+                        await card.click()
+                        found = True
+                        log("  点击了服务器卡片")
+                    except Exception:
+                        pass
+                if not found:
+                    log("  ❌ 未找到服务器入口")
+                    shot = str(SCREENSHOT_DIR / f"{safe}_no_server.png")
+                    await page.screenshot(path=shot, full_page=True)
+                    send_tg(f"❌ *KataBump 未找到服务器*\n用户: `{username}`", shot)
+                    return False
+        except Exception as e:
+            log(f"  ❌ 进入服务器失败: {e}")
+            shot = str(SCREENSHOT_DIR / f"{safe}_nav_fail.png")
+            try: await page.screenshot(path=shot, full_page=True)
+            except: pass
+            return False
 
         # --- 续期循环 (最多 20 次) ---
         for att in range(1, 21):

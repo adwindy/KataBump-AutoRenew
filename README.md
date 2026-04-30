@@ -65,3 +65,13 @@ Actions 页面 → Enable workflow → 可手动 Run workflow 测试
 ├── time.txt               # 自动更新(防休眠)
 └── README.md
 ```
+
+## 💡 server_id (可选)
+
+在 `USERS_JSON` 中可以指定 `server_id`，脚本会直接导航到服务器页面，无需在 dashboard 查找链接：
+
+```json
+[{"username":"email@example.com","password":"pass","server_id":"123456"}]
+```
+
+如果不指定 `server_id`，脚本会尝试在 Dashboard 页面查找服务器入口链接。
