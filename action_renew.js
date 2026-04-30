@@ -248,24 +248,26 @@ async function waitTurnstile(page, sec = 10) {
             await page.getByRole('textbox', { name: 'Password' }).fill(user.password);
             await page.waitForTimeout(500);
 
-                        // Turnstile (登录) - CDP + xdotool
-            console.log('  >> 登录页 Turnstile (CDP+xdotool)...');
+                                    // Turnstile (登录) - xdotool优先, CDP回退
+            console.log('  >> 登录页 Turnstile...');
             let tsOk = false;
-            for (let attempt = 0; attempt < 3; attempt++) {
+            for (let attempt = 0; attempt < 5; attempt++) {
                 let clicked = false;
-                for (let i = 0; i < 10; i++) {
-                    if (await cdpClick(page)) { clicked = true; break; }
-                    await page.waitForTimeout(1000);
+                // xdotool 优先 (物理鼠标事件，更难被检测)
+                for (let i = 0; i < 8; i++) {
+                    if (await xdotoolClick(page)) { clicked = true; break; }
+                    await page.waitForTimeout(1500);
                 }
+                // CDP 回退
                 if (!clicked) {
-                    console.log('  >> CDP 未命中，尝试 xdotool...');
-                    for (let i = 0; i < 5; i++) {
-                        if (await xdotoolClick(page)) { clicked = true; break; }
-                        await page.waitForTimeout(1000);
+                    console.log('  >> xdotool 未命中，尝试 CDP...');
+                    for (let i = 0; i < 8; i++) {
+                        if (await cdpClick(page)) { clicked = true; break; }
+                        await page.waitForTimeout(1500);
                     }
                 }
                 if (clicked && await waitTurnstile(page, 15)) { tsOk = true; break; }
-                console.log(`  >> Turnstile 第 $` + (attempt+1) + `/3 次失败，刷新...`);
+                console.log('  >> Turnstile 第 ' + (attempt+1) + '/5 次失败，刷新...');
                 await page.reload();
                 await page.waitForTimeout(3000);
                 try {
