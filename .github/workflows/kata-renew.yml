@@ -42,25 +42,20 @@ jobs:
           chmod +x hysteria
           sudo mv hysteria /usr/local/bin/
           hysteria version
+        env:
+          HY2_AUTH: ${{ secrets.HY2_AUTH }}
 
       - name: 🔌 启动 Hysteria2 代理
         if: env.HY2_AUTH != ''
         run: |
-          cat > /tmp/hy2.yaml << YAML
-          server: ${HY2_SERVER}
-          auth: ${HY2_AUTH}
-          tls:
-            sni: ${HY2_SNI}
-            insecure: true
-            alpn:
-              - h3
-          socks5:
-            listen: 127.0.0.1:51080
-          YAML
+          printf 'server: %s\nauth: %s\ntls:\n  sni: %s\n  insecure: true\n  alpn:\n    - h3\nsocks5:\n  listen: 127.0.0.1:51080\n' \
+            "${HY2_SERVER}" "${HY2_AUTH}" "${HY2_SNI}" > /tmp/hy2.yaml
+          cat /tmp/hy2.yaml
           nohup hysteria client -c /tmp/hy2.yaml > /tmp/hy2.log 2>&1 &
-          sleep 3
+          sleep 5
+          cat /tmp/hy2.log
           # 验证代理
-          curl -x socks5h://127.0.0.1:51080 -s https://api.ipify.org && echo "" || echo "代理连接失败"
+          curl -x socks5h://127.0.0.1:51080 -s --connect-timeout 10 https://api.ipify.org && echo " ✅代理OK" || echo "❌代理失败"
         env:
           HY2_SERVER: ${{ secrets.HY2_SERVER }}
           HY2_AUTH: ${{ secrets.HY2_AUTH }}
